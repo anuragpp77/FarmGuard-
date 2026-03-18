@@ -317,24 +317,16 @@ with col_main:
 # ── DETECTION LOOP ─────────────────────────────
 if st.session_state['is_running']:
 
-    if len(st.session_state['logs']) == 1 and "initialized" in st.session_state['logs'][0]['title']:
-        st.session_state['logs'].insert(0, {
-            "type": "info",
-            "title": "Monitoring started",
-            "sub": "YOLOv8 initialized",
-            "time": datetime.now().strftime('%H:%M:%S')
-        })
-        render_logs()
-
     model  = load_model("best.pt")
     source = 0 if video_source == "Webcam (0)" else video_source
     cap    = cv2.VideoCapture(source)
 
-    ret, frame = cap.read()
+    while st.session_state['is_running']:
 
-    if not ret:
-        st.warning("Video stream ended.")
-    else:
+        ret, frame = cap.read()
+        if not ret:
+            st.warning("Video stream ended.")
+            break
 
         if night_vision:
             lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
@@ -345,75 +337,35 @@ if st.session_state['is_running']:
         results          = model(frame, conf=confidence, verbose=False)
         detected_animals = set()
 
-        for r in results:
-            for box in r.boxes:
-                label = model.names[int(box.cls[0])]
-                conf  = float(box.conf[0])
-                if label in animal_classes:
-                    detected_animals.add((label, conf))
-
         annotated = frame.copy()
+
         for r in results:
             for box in r.boxes:
                 x1, y1, x2, y2 = map(int, box.xyxy[0])
                 label = model.names[int(box.cls[0])]
                 conf  = float(box.conf[0])
+
                 if label in animal_classes:
+                    detected_animals.add((label, conf))
+
                     cv2.rectangle(annotated, (x1, y1), (x2, y2), (180, 190, 130), 2)
                     text = f"{label.capitalize()} {int(conf*100)}%"
-                    (tw, th), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 2)
-                    cv2.rectangle(annotated, (x1, y1 - th - 10), (x1 + tw + 8, y1), (180, 190, 130), -1)
-                    cv2.putText(annotated, text, (x1 + 4, y1 - 5),
+                    cv2.putText(annotated, text, (x1, y1 - 5),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
 
         video_placeholder.image(
             cv2.cvtColor(annotated, cv2.COLOR_BGR2RGB),
-            channels="RGB",
             use_container_width=True
         )
 
-        # ── ALERT LOGIC ────────────────────────
+        # ALERT LOGIC
         current_time = time.time()
         if detected_animals and (current_time - st.session_state['last_alert_time'] >= alert_interval):
             top_animal, top_conf = max(detected_animals, key=lambda x: x[1])
-            time_str = datetime.now().strftime('%H:%M:%S')
-
-            st.session_state['total_detected'] += 1
-            log_type = "warning" if top_animal in ["zebra", "buffalo"] else "danger"
-
-            st.session_state['logs'].insert(0, {
-                "type": log_type,
-                "title": f"{top_animal.capitalize()} detected",
-                "sub": f"Confidence {int(top_conf*100)}% · {video_source.split('.')[0].capitalize()}",
-                "time": time_str
-            })
-
-            alert_ok = send_whatsapp_alert(top_animal)
-            if alert_ok:
-                st.session_state['alerts_sent'] += 1
-                masked = TWILIO_TO_NUM[-4:].rjust(len(TWILIO_TO_NUM), '*')
-                st.session_state['logs'].insert(0, {
-                    "type": "info",
-                    "title": "WhatsApp alert sent",
-                    "sub": f"Delivered to {masked}",
-                    "time": time_str
-                })
-            else:
-                st.session_state['logs'].insert(0, {
-                    "type": "warning",
-                    "title": "Alert failed",
-                    "sub": "Check Twilio credentials in .env",
-                    "time": time_str
-                })
-
             st.session_state['last_alert_time'] = current_time
+            send_whatsapp_alert(top_animal)
 
-            if len(st.session_state['logs']) > 20:
-                st.session_state['logs'] = st.session_state['logs'][:20]
-
-            render_logs()
+        time.sleep(0.03)  # smooth playback (~30 FPS)
 
     cap.release()
 
-    time.sleep(0.1)
-    st.rerun()
