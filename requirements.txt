@@ -1,4 +1,4 @@
-opencv-python-headles
+opencv-python-headless
 ultralytics
 streamlit
 twilio
