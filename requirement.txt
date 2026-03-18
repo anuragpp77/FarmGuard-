@@ -3,4 +3,4 @@ ultralytics
 twilio
 python-dotenv
 streamlit
- 
+numpy<2
