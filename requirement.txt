@@ -2,7 +2,5 @@ opencv-python-headless
 ultralytics
 twilio
 python-dotenv
-pillow
-pandas
-requests
+streamlit
  
