@@ -1,6 +1,6 @@
+
 streamlit==1.55.0
 opencv-python-headless
-numpy
 ultralytics
 twilio
 python-dotenv
