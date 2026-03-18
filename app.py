@@ -371,11 +371,4 @@ if st.session_state['is_running']:
         time.sleep(0.03)
 
     cap.release()
-        # ALERT LOGIC
-        current_time = time.time()
-        if detected_animals and (current_time - st.session_state['last_alert_time'] >= alert_interval):
-            top_animal, top_conf = max(detected_animals, key=lambda x: x[1])
-            st.session_state['last_alert_time'] = current_time
-            send_whatsapp_alert(top_animal)
-
-
+      
