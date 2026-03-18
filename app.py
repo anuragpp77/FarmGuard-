@@ -315,18 +315,17 @@ with col_main:
 
 
 # ── DETECTION LOOP ─────────────────────────────
+# ── DETECTION LOOP ─────────────────────────────
 if st.session_state['is_running']:
 
     model  = load_model("best.pt")
     source = 0 if video_source == "Webcam (0)" else video_source
     cap    = cv2.VideoCapture(source)
 
-    while st.session_state['is_running']:
-
-        ret, frame = cap.read()
-        if not ret:
-            st.warning("Video stream ended.")
-            break
+    ret, frame = cap.read()
+    if not ret:
+        st.warning("Video stream ended.")
+    else:
 
         if night_vision:
             lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
@@ -365,7 +364,5 @@ if st.session_state['is_running']:
             st.session_state['last_alert_time'] = current_time
             send_whatsapp_alert(top_animal)
 
-        time.sleep(0.03)  # smooth playback (~30 FPS)
-
-    cap.release()
-
+    time.sleep(0.05)
+    st.rerun()
