@@ -322,10 +322,17 @@ if st.session_state['is_running']:
     source = 0 if video_source == "Webcam (0)" else video_source
     cap    = cv2.VideoCapture(source)
 
-    ret, frame = cap.read()
-    if not ret:
-        st.warning("Video stream ended.")
-    else:
+    frame_window = video_placeholder
+
+    for _ in range(100000):   # simulate continuous stream
+
+        if not st.session_state['is_running']:
+            break
+
+        ret, frame = cap.read()
+        if not ret:
+            st.warning("Video stream ended.")
+            break
 
         if night_vision:
             lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
@@ -347,12 +354,9 @@ if st.session_state['is_running']:
                 if label in animal_classes:
                     detected_animals.add((label, conf))
 
-                    cv2.rectangle(annotated, (x1, y1), (x2, y2), (180, 190, 130), 2)
-                    text = f"{label.capitalize()} {int(conf*100)}%"
-                    cv2.putText(annotated, text, (x1, y1 - 5),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
+                    cv2.rectangle(annotated, (x1, y1), (x2, y2), (180,190,130), 2)
 
-        video_placeholder.image(
+        frame_window.image(
             cv2.cvtColor(annotated, cv2.COLOR_BGR2RGB),
             use_container_width=True
         )
@@ -360,9 +364,18 @@ if st.session_state['is_running']:
         # ALERT LOGIC
         current_time = time.time()
         if detected_animals and (current_time - st.session_state['last_alert_time'] >= alert_interval):
+            top_animal, _ = max(detected_animals, key=lambda x: x[1])
+            st.session_state['last_alert_time'] = current_time
+            send_whatsapp_alert(top_animal)
+
+        time.sleep(0.03)
+
+    cap.release()
+        # ALERT LOGIC
+        current_time = time.time()
+        if detected_animals and (current_time - st.session_state['last_alert_time'] >= alert_interval):
             top_animal, top_conf = max(detected_animals, key=lambda x: x[1])
             st.session_state['last_alert_time'] = current_time
             send_whatsapp_alert(top_animal)
 
-    time.sleep(0.05)
-    st.rerun()
+
